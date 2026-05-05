@@ -16,7 +16,7 @@ Controls 2 servos in the Diorama movement head.
 | D9  | Output | Servo 1 signal (PWM) |
 | D10 | Output | Servo 2 signal (PWM) |
 | D2  | Input  | On/Off demand from external hardware (active low) |
-| D4  | Output | Servo power enable (active low) |
+| D4  | Output | Servo power enable (active high) |
 
 ### Behaviour
 

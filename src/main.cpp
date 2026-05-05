@@ -7,7 +7,7 @@
 #define SERVO1_PIN        9   // PWM output – servo 1 signal
 #define SERVO2_PIN        10  // PWM output – servo 2 signal
 #define DEMAND_INPUT_PIN  2   // Digital input  – On/Off demand (active low)
-#define SERVO_POWER_PIN   4   // Digital output – servo power enable (active low)
+#define SERVO_POWER_PIN   4   // Digital output – servo power enable (active high)
 
 // ---------------------------------------------------------------------------
 // Servo positions (degrees)
@@ -72,9 +72,9 @@ void setup()
     pinMode(DEMAND_INPUT_PIN, INPUT_PULLUP);
 
     // Servo power output – keep power OFF during initialisation
-    // Active-low: HIGH = power off, LOW = power on
+    // Active-high: LOW = power off, HIGH = power on
     pinMode(SERVO_POWER_PIN, OUTPUT);
-    digitalWrite(SERVO_POWER_PIN, HIGH);
+    digitalWrite(SERVO_POWER_PIN, LOW);
 
     // Attach servos and drive them to the Off position before enabling power
     servo1.attach(SERVO1_PIN);
@@ -91,7 +91,7 @@ void setup()
     delay(200);
 
     // Enable servo power now that initialisation is complete
-    digitalWrite(SERVO_POWER_PIN, LOW);
+    digitalWrite(SERVO_POWER_PIN, HIGH);
 }
 
 // ---------------------------------------------------------------------------
