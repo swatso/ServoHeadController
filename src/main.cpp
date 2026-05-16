@@ -13,9 +13,9 @@
 // Servo positions (degrees)
 // ---------------------------------------------------------------------------
 #define SERVO1_OFF_POSITION   0
-#define SERVO1_ON_POSITION   90
-#define SERVO2_OFF_POSITION 180
-#define SERVO2_ON_POSITION   90
+#define SERVO1_ON_POSITION   29
+#define SERVO2_OFF_POSITION  0
+#define SERVO2_ON_POSITION   32
 
 // ---------------------------------------------------------------------------
 // Smooth-movement parameters
@@ -24,6 +24,10 @@
 #define MOVE_DURATION_MS  5000
 // Time between individual position steps (ms) – smaller = smoother
 #define STEP_INTERVAL_MS    20
+
+// Demand input filtering
+#define DEMAND_BOOT_SETTLE_MS  300
+#define DEMAND_DEBOUNCE_MS     80
 
 // ---------------------------------------------------------------------------
 // Globals
@@ -34,6 +38,69 @@ Servo servo2;
 float currentPos1 = SERVO1_OFF_POSITION;
 float currentPos2 = SERVO2_OFF_POSITION;
 bool  isOn        = false;
+
+// Debounced demand tracking
+bool demandRawLast        = false;
+bool demandStableState    = false;
+unsigned long demandSince = 0;
+
+// ---------------------------------------------------------------------------
+// readDemandOnRaw
+// Reads demand input as a boolean where true means "On" requested.
+// ---------------------------------------------------------------------------
+bool readDemandOnRaw()
+{
+    return (digitalRead(DEMAND_INPUT_PIN) == LOW);
+}
+
+// ---------------------------------------------------------------------------
+// initializeDemandState
+// Waits briefly for external circuitry to settle, then captures a stable
+// initial demand state to avoid startup chatter.
+// ---------------------------------------------------------------------------
+void initializeDemandState()
+{
+    delay(DEMAND_BOOT_SETTLE_MS);
+
+    bool sample = readDemandOnRaw();
+    unsigned long stableStart = millis();
+
+    while ((millis() - stableStart) < DEMAND_DEBOUNCE_MS)
+    {
+        bool now = readDemandOnRaw();
+        if (now != sample)
+        {
+            sample = now;
+            stableStart = millis();
+        }
+        delay(2);
+    }
+
+    demandRawLast     = sample;
+    demandStableState = sample;
+    demandSince       = millis();
+}
+
+// ---------------------------------------------------------------------------
+// readDemandOnDebounced
+// Applies a time-based debounce filter to reject short input glitches.
+// ---------------------------------------------------------------------------
+bool readDemandOnDebounced()
+{
+    bool raw = readDemandOnRaw();
+    if (raw != demandRawLast)
+    {
+        demandRawLast = raw;
+        demandSince = millis();
+    }
+
+    if ((millis() - demandSince) >= DEMAND_DEBOUNCE_MS)
+    {
+        demandStableState = raw;
+    }
+
+    return demandStableState;
+}
 
 // ---------------------------------------------------------------------------
 // moveServosSmooth
@@ -53,6 +120,7 @@ void moveServosSmooth(int target1, int target2)
         int   pos1 = (int)(start1 + t * ((float)target1 - start1));
         int   pos2 = (int)(start2 + t * ((float)target2 - start2));
 
+        Serial.println(pos1);
         servo1.write(pos1);
         servo2.write(pos2);
 
@@ -68,30 +136,49 @@ void moveServosSmooth(int target1, int target2)
 // ---------------------------------------------------------------------------
 void setup()
 {
+    Serial.begin(9600);
     // Configure demand input with internal pull-up (signal is active low)
     pinMode(DEMAND_INPUT_PIN, INPUT_PULLUP);
+    Serial.println("Initializing...");
 
     // Servo power output – keep power OFF during initialisation
-    // Active-low: HIGH = power off, LOW = power on
+    // Active-high: HIGH = power On, LOW = power Off
     pinMode(SERVO_POWER_PIN, OUTPUT);
-    digitalWrite(SERVO_POWER_PIN, HIGH);
+    digitalWrite(SERVO_POWER_PIN, LOW);
 
+    initializeDemandState();
+
+    Serial.println("Attaching servos and moving to Off position...");
     // Attach servos and drive them to the Off position before enabling power
     servo1.attach(SERVO1_PIN);
     servo2.attach(SERVO2_PIN);
 
-    servo1.write(SERVO1_OFF_POSITION);
-    servo2.write(SERVO2_OFF_POSITION);
-
-    currentPos1 = SERVO1_OFF_POSITION;
-    currentPos2 = SERVO2_OFF_POSITION;
-    isOn        = false;
+    if (demandStableState)
+    {
+        Serial.println("Initialising servos to On position (demand active)...");
+        servo1.write(SERVO1_ON_POSITION);
+        servo2.write(SERVO2_ON_POSITION);
+        currentPos1 = SERVO1_ON_POSITION;
+        currentPos2 = SERVO2_ON_POSITION;
+        isOn = true;
+    }
+    else
+    {
+        Serial.println("Initialising servos to Off position (demand inactive)...");
+        servo1.write(SERVO1_OFF_POSITION);
+        servo2.write(SERVO2_OFF_POSITION);
+        currentPos1 = SERVO1_OFF_POSITION;
+        currentPos2 = SERVO2_OFF_POSITION;
+        isOn = false;
+    }
 
     // Brief settle time so the PWM signal is stable before power is applied
     delay(200);
 
+    Serial.println("Initialisation complete, enabling servo power...");
     // Enable servo power now that initialisation is complete
-    digitalWrite(SERVO_POWER_PIN, LOW);
+    digitalWrite(SERVO_POWER_PIN, HIGH);
+    Serial.println("Setup complete, waiting for demand input...");
 }
 
 // ---------------------------------------------------------------------------
@@ -99,17 +186,20 @@ void setup()
 // ---------------------------------------------------------------------------
 void loop()
 {
-    // DEMAND_INPUT_PIN is active low; LOW means "On" requested
-    bool demandOn = (digitalRead(DEMAND_INPUT_PIN) == LOW);
+    bool demandOn = readDemandOnDebounced();
 
     if (demandOn && !isOn)
     {
+        Serial.println("Demand ON detected, moving servos to On position...");
         moveServosSmooth(SERVO1_ON_POSITION, SERVO2_ON_POSITION);
         isOn = true;
+        Serial.println("Servos turned ON");
     }
     else if (!demandOn && isOn)
     {
+        Serial.println("Demand OFF detected, moving servos to Off position...");
         moveServosSmooth(SERVO1_OFF_POSITION, SERVO2_OFF_POSITION);
         isOn = false;
+        Serial.println("Servos turned OFF");
     }
 }
