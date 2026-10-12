@@ -10,12 +10,12 @@
 #define SERVO_POWER_PIN   4   // Digital output – servo power enable (active low)
 
 // ---------------------------------------------------------------------------
-// Servo positions (degrees)
+// Servo pulse lengths (microseconds)
 // ---------------------------------------------------------------------------
-#define SERVO1_OFF_POSITION   0
-#define SERVO1_ON_POSITION   29
-#define SERVO2_OFF_POSITION  0
-#define SERVO2_ON_POSITION   32
+#define SERVO1_OFF_PULSE_US   2038
+#define SERVO1_ON_PULSE_US    1425
+#define SERVO2_OFF_PULSE_US   1260
+#define SERVO2_ON_PULSE_US    1970
 
 // ---------------------------------------------------------------------------
 // Smooth-movement parameters
@@ -35,8 +35,8 @@
 Servo servo1;
 Servo servo2;
 
-float currentPos1 = SERVO1_OFF_POSITION;
-float currentPos2 = SERVO2_OFF_POSITION;
+float currentPulse1 = SERVO1_OFF_PULSE_US;
+float currentPulse2 = SERVO2_OFF_PULSE_US;
 bool  isOn        = false;
 
 // Debounced demand tracking
@@ -105,30 +105,30 @@ bool readDemandOnDebounced()
 // ---------------------------------------------------------------------------
 // moveServosSmooth
 // Linearly interpolates both servos from their current positions to the
-// supplied target positions over MOVE_DURATION_MS milliseconds.
+// supplied target pulse lengths over MOVE_DURATION_MS milliseconds.
 // ---------------------------------------------------------------------------
-void moveServosSmooth(int target1, int target2)
+void moveServosSmooth(int targetPulse1, int targetPulse2)
 {
-    float start1 = currentPos1;
-    float start2 = currentPos2;
+    float start1 = currentPulse1;
+    float start2 = currentPulse2;
 
     int steps = MOVE_DURATION_MS / STEP_INTERVAL_MS;
 
     for (int i = 1; i <= steps; i++)
     {
         float t    = (float)i / (float)steps;
-        int   pos1 = (int)(start1 + t * ((float)target1 - start1));
-        int   pos2 = (int)(start2 + t * ((float)target2 - start2));
+        int pulse1 = (int)(start1 + t * ((float)targetPulse1 - start1));
+        int pulse2 = (int)(start2 + t * ((float)targetPulse2 - start2));
 
-        Serial.println(pos1);
-        servo1.write(pos1);
-        servo2.write(pos2);
+        Serial.println(pulse1);
+        servo1.writeMicroseconds(pulse1);
+        servo2.writeMicroseconds(pulse2);
 
         delay(STEP_INTERVAL_MS);
     }
 
-    currentPos1 = (float)target1;
-    currentPos2 = (float)target2;
+    currentPulse1 = (float)targetPulse1;
+    currentPulse2 = (float)targetPulse2;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,19 +156,19 @@ void setup()
     if (demandStableState)
     {
         Serial.println("Initialising servos to On position (demand active)...");
-        servo1.write(SERVO1_ON_POSITION);
-        servo2.write(SERVO2_ON_POSITION);
-        currentPos1 = SERVO1_ON_POSITION;
-        currentPos2 = SERVO2_ON_POSITION;
+        servo1.writeMicroseconds(SERVO1_ON_PULSE_US);
+        servo2.writeMicroseconds(SERVO2_ON_PULSE_US);
+        currentPulse1 = SERVO1_ON_PULSE_US;
+        currentPulse2 = SERVO2_ON_PULSE_US;
         isOn = true;
     }
     else
     {
         Serial.println("Initialising servos to Off position (demand inactive)...");
-        servo1.write(SERVO1_OFF_POSITION);
-        servo2.write(SERVO2_OFF_POSITION);
-        currentPos1 = SERVO1_OFF_POSITION;
-        currentPos2 = SERVO2_OFF_POSITION;
+        servo1.writeMicroseconds(SERVO1_OFF_PULSE_US);
+        servo2.writeMicroseconds(SERVO2_OFF_PULSE_US);
+        currentPulse1 = SERVO1_OFF_PULSE_US;
+        currentPulse2 = SERVO2_OFF_PULSE_US;
         isOn = false;
     }
 
@@ -191,14 +191,14 @@ void loop()
     if (demandOn && !isOn)
     {
         Serial.println("Demand ON detected, moving servos to On position...");
-        moveServosSmooth(SERVO1_ON_POSITION, SERVO2_ON_POSITION);
+        moveServosSmooth(SERVO1_ON_PULSE_US, SERVO2_ON_PULSE_US);
         isOn = true;
         Serial.println("Servos turned ON");
     }
     else if (!demandOn && isOn)
     {
         Serial.println("Demand OFF detected, moving servos to Off position...");
-        moveServosSmooth(SERVO1_OFF_POSITION, SERVO2_OFF_POSITION);
+        moveServosSmooth(SERVO1_OFF_PULSE_US, SERVO2_OFF_PULSE_US);
         isOn = false;
         Serial.println("Servos turned OFF");
     }

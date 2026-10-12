@@ -1,8 +1,11 @@
 # ServoHeadController
 
-Controls 2 servos in the Diorama movement head.
+Controls 2 servos in the ForkLift load transfer mechanism.
+These servos are responsible for anchoring the load during transfer operations.
+A pair of servos ensures stable and secure handling of the load during transfer operations.
+There will likely be two instances of this mechanism in the overall system.
 
-Branch PuckControl is used for controlling the servos in the Diorama movement head.
+Branch ForkLift is used for controlling the servos in the ForkLift load transfer mechanism.
 
 ## Hardware
 
@@ -29,8 +32,10 @@ Branch PuckControl is used for controlling the servos in the Diorama movement he
 * When the demand input goes high the servos return smoothly to their
   **Off** positions over 5 seconds.
 
-Servo positions and GPIO pins are defined as `#define` constants at the top
-of `src/main.cpp` and can be adjusted without touching any other code.
+Servo endpoint pulse lengths (in microseconds) and GPIO pins are defined as
+`#define` constants at the top of `src/main.cpp` and can be adjusted without
+touching any other code. Calibrate the pulse lengths for the servos and
+mechanism in use.
 
 ---
 
