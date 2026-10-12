@@ -21,7 +21,7 @@
 // Smooth-movement parameters
 // ---------------------------------------------------------------------------
 // Total travel time in milliseconds
-#define MOVE_DURATION_MS  5000
+#define MOVE_DURATION_MS  1000
 // Time between individual position steps (ms) – smaller = smoother
 #define STEP_INTERVAL_MS    20
 
