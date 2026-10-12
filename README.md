@@ -2,6 +2,8 @@
 
 Controls 2 servos in the Diorama movement head.
 
+Branch PuckControl is used for controlling the servos in the Diorama movement head.
+
 ## Hardware
 
 | Item | Detail |
