@@ -1,11 +1,8 @@
 # ServoHeadController
 
-Controls 2 servos in the ForkLift load transfer mechanism.
-These servos are responsible for anchoring the load during transfer operations.
-A pair of servos ensures stable and secure handling of the load during transfer operations.
-There will likely be two instances of this mechanism in the overall system.
-
-Branch ForkLift is used for controlling the servos in the ForkLift load transfer mechanism.
+Controls 2 servos in the Magnetic puck of the diarama CNC mechanism.
+These servos are responsible for raising/lowering magnets to attach the object under control
+A pair of servos is used to operate two magnets in unison and simplifies the mechanical setup
 
 ## Hardware
 
