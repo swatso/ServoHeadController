@@ -12,7 +12,7 @@ Forklift is built using an 8MHz ATMega328P microcontroller.
 
 | Item | Detail |
 |------|--------|
-| Target MCU | Arduino Pro Mini (ATmega328P, 5 V / 16 MHz) |
+| Target MCU | Arduino Pro Mini (ATmega328P, 5 V / 8 MHz) |
 | Servo library | Standard Arduino `Servo` library |
 
 ### Pin assignments
