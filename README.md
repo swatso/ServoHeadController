@@ -6,7 +6,8 @@ A pair of servos ensures stable and secure handling of the load during transfer 
 There will likely be two instances of this mechanism in the overall system.
 
 Branch ForkLift is used for controlling the servos in the ForkLift load transfer mechanism.
-
+Forklift is built using an 8MHz ATMega328P microcontroller.
+   
 ## Hardware
 
 | Item | Detail |
