@@ -22,16 +22,28 @@ Forklift is built using an 8MHz ATMega328P microcontroller.
 | D9  | Output | Servo 1 signal (PWM) |
 | D10 | Output | Servo 2 signal (PWM) |
 | D2  | Input  | On/Off demand from external hardware (active low) |
-| D4  | Output | Servo power enable (active low) |
+| A3  | Input  | Pallet sensor (Hall effect, active low) |
+| D4  | Output | Servo power enable (active high) |
+| D13 | Output | Built-in LED (`LED_PIN`) – diagnostic, ON while the pallet sensor is active (low) |
 
 ### Behaviour
 
 * Both servos initialise to their **Off** positions at power-up.  
 * Servo power is enabled only **after** initialisation is complete.  
-* When the demand input goes low the servos move smoothly to their **On**
-  positions over 5 seconds.  
-* When the demand input goes high the servos return smoothly to their
-  **Off** positions over 5 seconds.
+* D2 is a request to Lock/Unlock the pallet. Locking only occurs when the
+  pallet sensor (A3) has also been continuously active (low) for more than
+  500 ms (`PALLET_DETECT_MS`).  
+* When D2 is low **and** the pallet has been detected for more than 500 ms,
+  the servos move smoothly to their **On** (locked) positions.  
+* When D2 goes high the servos return smoothly to their **Off** (unlocked)
+  positions.  
+* Once locked, the servos stay locked until D2 is released, even if the
+  pallet sensor drops out.  
+* At power-up the servos start **On** only if D2 is low and the pallet sensor
+  is active; otherwise they start **Off**.
+* The built-in LED (D13) is a diagnostic indicator: it is ON whenever the
+  pallet sensor (A3) is active (low). It follows the raw sensor input, without
+  the 500 ms filter.
 
 Servo endpoint pulse lengths (in microseconds) and GPIO pins are defined as
 `#define` constants at the top of `src/main.cpp` and can be adjusted without

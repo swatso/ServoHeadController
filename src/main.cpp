@@ -7,7 +7,12 @@
 #define SERVO1_PIN        9   // PWM output – servo 1 signal
 #define SERVO2_PIN        10  // PWM output – servo 2 signal
 #define DEMAND_INPUT_PIN  2   // Digital input  – On/Off demand (active low)
-#define SERVO_POWER_PIN   4   // Digital output – servo power enable (active low)
+#define SERVO_POWER_PIN   4   // Digital output – servo power enable (active high)
+#define PALLET_SENSOR_PIN A3  // Analog pin used as digital input – pallet sensor (active low)
+#define LED_PIN           LED_BUILTIN // Digital output – on-board LED (D13), diagnostic: ON when pallet sensor active
+
+// Pallet must be continuously detected for this long before locking is allowed
+#define PALLET_DETECT_MS  500
 
 // ---------------------------------------------------------------------------
 // Servo pulse lengths (microseconds)
@@ -51,6 +56,26 @@ unsigned long demandSince = 0;
 bool readDemandOnRaw()
 {
     return (digitalRead(DEMAND_INPUT_PIN) == LOW);
+}
+
+// ---------------------------------------------------------------------------
+// palletDetectedStable
+// True once the pallet sensor has been continuously active (low) for more
+// than PALLET_DETECT_MS. Any inactive reading restarts the timer.
+// ---------------------------------------------------------------------------
+bool palletDetectedStable()
+{
+    static unsigned long activeSince = 0;
+    static bool wasActive = false;
+
+    bool active = (digitalRead(PALLET_SENSOR_PIN) == LOW);
+    if (active && !wasActive)
+    {
+        activeSince = millis();
+    }
+    wasActive = active;
+
+    return active && ((millis() - activeSince) > PALLET_DETECT_MS);
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +164,9 @@ void setup()
     Serial.begin(9600);
     // Configure demand input with internal pull-up (signal is active low)
     pinMode(DEMAND_INPUT_PIN, INPUT_PULLUP);
+    pinMode(PALLET_SENSOR_PIN, INPUT_PULLUP);
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, LOW);
     Serial.println("Initializing...");
 
     // Servo power output – keep power OFF during initialisation
@@ -153,9 +181,10 @@ void setup()
     servo1.attach(SERVO1_PIN);
     servo2.attach(SERVO2_PIN);
 
-    if (demandStableState)
+    // Start locked only if lock is requested and a pallet is already present
+    if (demandStableState && digitalRead(PALLET_SENSOR_PIN) == LOW)
     {
-        Serial.println("Initialising servos to On position (demand active)...");
+        Serial.println("Initialising servos to On position (demand active, pallet present)...");
         servo1.writeMicroseconds(SERVO1_ON_PULSE_US);
         servo2.writeMicroseconds(SERVO2_ON_PULSE_US);
         currentPulse1 = SERVO1_ON_PULSE_US;
@@ -164,7 +193,7 @@ void setup()
     }
     else
     {
-        Serial.println("Initialising servos to Off position (demand inactive)...");
+        Serial.println("Initialising servos to Off position...");
         servo1.writeMicroseconds(SERVO1_OFF_PULSE_US);
         servo2.writeMicroseconds(SERVO2_OFF_PULSE_US);
         currentPulse1 = SERVO1_OFF_PULSE_US;
@@ -187,10 +216,16 @@ void setup()
 void loop()
 {
     bool demandOn = readDemandOnDebounced();
+    bool palletOk = palletDetectedStable();
 
-    if (demandOn && !isOn)
+    // Diagnostic: LED mirrors the raw (unfiltered) pallet sensor state
+    digitalWrite(LED_PIN, digitalRead(PALLET_SENSOR_PIN) == LOW ? HIGH : LOW);
+
+    // Locking requires demand AND a stable pallet detection. Once locked, the
+    // servos stay locked until demand is released (pallet flicker is ignored).
+    if (demandOn && palletOk && !isOn)
     {
-        Serial.println("Demand ON detected, moving servos to On position...");
+        Serial.println("Demand ON and pallet detected, moving servos to On position...");
         moveServosSmooth(SERVO1_ON_PULSE_US, SERVO2_ON_PULSE_US);
         isOn = true;
         Serial.println("Servos turned ON");
